@@ -1,0 +1,21 @@
+# Copy this file to terraform.tfvars and fill in your values
+
+# Required: AWS profile from ~/.aws/credentials (if not using default)
+aws_profile = "your-profile-name"
+
+# Optional: Your IP address for SSH access (only needed if you want SSH access)
+# Leave commented out if using AWS Console (Session Manager) access only
+# your_ip_cidr = "1.2.3.4/32"
+
+# Optional: Override defaults if needed
+# aws_region = "us-east-1"
+# project_name = "kamailio-proxy"
+# instance_type = "t3.small"
+# destination_twilio_domain = "your-account.sip.twilio.com"
+
+# Optional: Update Twilio IP ranges if needed (check Twilio docs for current ranges)
+# twilio_ip_cidrs = [
+#   "54.172.60.0/23",
+#   "54.244.51.0/24",
+#   "177.71.206.0/23"
+# ]
