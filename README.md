@@ -25,33 +25,52 @@ This proxy enables call routing between separate Twilio accounts while preservin
 ### Call Flow
 
 ```
-Source Twilio Phone Number (+1-949-433-7060)
-  │
-  │ 1. User dials phone number
-  │
-  ↓ INVITE sip:extension@<PROXY_IP>:5060
-  │
-[Kamailio SIP Proxy]
-  │ 2. Receives INVITE
-  │ 3. Rewrites Request-URI from IP to destination FQDN
-  │    From: sip:extension@34.197.219.1
-  │    To:   sip:extension@destination.sip.twilio.com
-  │ 4. Adds Record-Route header (stays in signaling path)
-  │
-  ↓ INVITE sip:extension@destination.sip.twilio.com
-  │
-Destination Twilio SIP Domain
-  │ 5. Authenticates via IP ACL
-  │ 6. Processes call
-  │
-  ↓ 100 Trying → 180 Ringing → 200 OK
-  │
-[Kamailio SIP Proxy]
-  │ 7. Routes responses back using Via headers
-  │
-  ↓ Responses forwarded
-  │
-Source Twilio (Call connected!)
+┌─────────────────────────────────────────────────────────────────────────┐
+│                            SIP Call Flow                                │
+└─────────────────────────────────────────────────────────────────────────┘
+
+  ┌──────────────────┐                                  ┌─────────────────┐
+  │  Source Twilio   │                                  │ Destination     │
+  │  Phone Number    │                                  │ Twilio Account  │
+  │ +1-949-433-7060  │                                  │ (SIP Domain)    │
+  └────────┬─────────┘                                  └────────▲────────┘
+           │                                                     │
+           │ ① User calls                                       │
+           │                                                     │
+           │ ② INVITE sip:ext@<PROXY_IP>:5060                  │
+           │                                                     │
+           ▼                                                     │
+  ┌─────────────────────────────────────────────────┐           │
+  │         Kamailio SIP Proxy (This Project)       │           │
+  │                                                 │           │
+  │  ③ Receives INVITE from source Twilio           │          │
+  │  ④ Rewrites Request-URI:                        │          │
+  │     FROM: sip:ext@34.197.219.1                  │          │
+  │     TO:   sip:ext@destination.sip.twilio.com    │          │
+  │  ⑤ Adds Record-Route header                     │          │
+  │     (stays in signaling path for ACK/BYE)       │          │
+  └───────────┬──────────────────────────▲──────────┘          │
+              │                          │                      │
+              │ ⑥ INVITE sip:ext@destination.sip.twilio.com   │
+              └──────────────────────────┼──────────────────────┘
+                                         │
+                          ⑦ Destination authenticates via IP ACL
+                          ⑧ 100 Trying → 180 Ringing → 200 OK
+                                         │
+              ┌──────────────────────────┘
+              │
+              │ ⑨ Responses routed back via Via headers
+              │
+              ▼
+  ┌──────────────────┐
+  │  Source Twilio   │
+  │ (Call Connected) │
+  └──────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Media (RTP) Flow: Direct between Twilio endpoints - NOT through proxy  │
+│ Signaling Path: Source ←→ Proxy ←→ Destination (ACK, BYE)              │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Key Features
