@@ -32,26 +32,26 @@ This proxy enables call routing between separate Twilio accounts while preservin
   ┌──────────────────┐                                  ┌─────────────────┐
   │  Source Twilio   │                                  │ Destination     │
   │  Phone Number    │                                  │ Twilio Account  │
-  │ +1-949-433-7060  │                                  │ (SIP Domain)    │
+  │ +1-555-555-1212  │                                  │ (SIP Domain)    │
   └────────┬─────────┘                                  └────────▲────────┘
            │                                                     │
            │ ① User calls                                       │
            │                                                     │
-           │ ② INVITE sip:ext@<PROXY_IP>:5060                  │
+           │ ② INVITE sip:ext@<PROXY_IP>:5060                   │
            │                                                     │
            ▼                                                     │
   ┌─────────────────────────────────────────────────┐           │
   │         Kamailio SIP Proxy (This Project)       │           │
   │                                                 │           │
-  │  ③ Receives INVITE from source Twilio           │          │
-  │  ④ Rewrites Request-URI:                        │          │
+  │  ③ Receives INVITE from source Twilio          │          │
+  │  ④ Rewrites Request-URI:                       │          │
   │     FROM: sip:ext@34.197.219.1                  │          │
   │     TO:   sip:ext@destination.sip.twilio.com    │          │
-  │  ⑤ Adds Record-Route header                     │          │
+  │  ⑤ Adds Record-Route header                    │          │
   │     (stays in signaling path for ACK/BYE)       │          │
   └───────────┬──────────────────────────▲──────────┘          │
               │                          │                      │
-              │ ⑥ INVITE sip:ext@destination.sip.twilio.com   │
+              │ ⑥ INVITE sip:ext@destination.sip.twilio.com    │
               └──────────────────────────┼──────────────────────┘
                                          │
                           ⑦ Destination authenticates via IP ACL
@@ -68,8 +68,8 @@ This proxy enables call routing between separate Twilio accounts while preservin
   └──────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────┐
-│ Media (RTP) Flow: Direct between Twilio endpoints - NOT through proxy  │
-│ Signaling Path: Source ←→ Proxy ←→ Destination (ACK, BYE)              │
+│ Media (RTP) Flow: Direct between Twilio endpoints - NOT through proxy   │
+│ Signaling Path: Source ←→ Proxy ←→ Destination (ACK, BYE)               │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
