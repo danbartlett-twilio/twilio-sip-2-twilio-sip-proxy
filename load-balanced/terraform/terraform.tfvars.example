@@ -3,12 +3,15 @@
 # Required: AWS profile from ~/.aws/credentials (if not using default)
 aws_profile = "your-profile-name"
 
+# Required: Set your destination Twilio SIP domain
+destination_twilio_domain = "your-account.sip.twilio.com"
+
 # Optional: Override defaults if needed
 # aws_region = "us-east-1"
 # project_name = "kamailio-lb"
 # environment = "prod"
 # instance_type = "t3.small"
-# destination_twilio_domain = "your-account.sip.twilio.com"
+
 
 # Optional: Auto Scaling configuration
 # asg_min_size = 2

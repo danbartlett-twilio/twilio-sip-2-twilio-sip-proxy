@@ -85,12 +85,13 @@ Edit `terraform.tfvars` and configure your settings:
 # AWS profile from ~/.aws/credentials (REQUIRED if not using default)
 aws_profile = "your-profile-name"
 
+# Required: enter your Twilio Domain
+destination_twilio_domain = "your-account.sip.twilio.com"
+
 # Optional: Your IP for SSH access (only if you need SSH)
 # Leave commented out if using AWS Console access (Session Manager)
 # your_ip_cidr = "YOUR_IP_HERE/32"
 
-# Optional: override other defaults
-# destination_twilio_domain = "your-account.sip.twilio.com"
 ```
 
 ### 2. Deploy Infrastructure
