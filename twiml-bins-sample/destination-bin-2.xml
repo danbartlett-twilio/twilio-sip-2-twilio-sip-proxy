@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say>Thank you, voice input received! You said your name is {{SpeechResult}}.</Say>
+  <Say>Goodbye!</Say>
+  <Hangup/>
+</Response>

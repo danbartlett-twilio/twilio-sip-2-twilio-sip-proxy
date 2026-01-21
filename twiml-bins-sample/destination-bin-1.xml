@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say>You made it to the destination Twilio account!</Say>
+  <Gather speechTimeout="1" input="speech" action="<TWIML-BIN-URL>" method="POST">
+    <Say>What is your name?</Say>
+  </Gather>
+  <Say>We didn't receive your name. Goodbye!</Say>
+  <Hangup/>
+</Response>

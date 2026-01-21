@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say>You called the Twilio source account. Sending you to the proxy and then onto the destination Twilio account.</Say>
+	<Dial>    	
+      	<Sip>sip:test@<IP-ADDRESS>:5060</Sip>
+	</Dial>
+</Response>

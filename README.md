@@ -190,9 +190,9 @@ Production-grade deployment with high availability, auto-scaling, and zero-downt
 cd single-ec2/terraform
 cp terraform.tfvars.example terraform.tfvars
 
-# Edit terraform.tfvars:
-# - Set aws_profile = "your-profile-name"
-# - Set destination_twilio_domain = "your-account.sip.twilio.com"
+# Edit terraform.tfvars and set BOTH required variables:
+# 1. aws_profile = "your-profile-name"
+# 2. destination_twilio_domain = "your-account.sip.twilio.com" (uncomment this line!)
 
 terraform init
 terraform plan
@@ -205,10 +205,10 @@ terraform apply
 cd load-balanced/terraform
 cp terraform.tfvars.example terraform.tfvars
 
-# Edit terraform.tfvars:
-# - Set aws_profile = "your-profile-name"
-# - Set destination_twilio_domain = "your-account.sip.twilio.com"
-# - Optional: Adjust asg_min_size, asg_max_size, instance_type
+# Edit terraform.tfvars and set BOTH required variables:
+# 1. aws_profile = "your-profile-name"
+# 2. destination_twilio_domain = "your-account.sip.twilio.com" (uncomment this line!)
+# Optional: Adjust asg_min_size, asg_max_size, instance_type
 
 terraform init
 terraform plan
