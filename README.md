@@ -1114,8 +1114,9 @@ $ru = "sip:" + $var(user) + "@your-account.sip.twilio.com";
 
 **3. Record-Route**
 ```kamailio
-# Add Record-Route header to stay in signaling path
-record_route();
+# Add Record-Route header with explicit public IP to stay in signaling path
+# Note: Do NOT include "sip:" prefix - record_route_preset() adds it automatically
+record_route_preset("ELASTIC_IP:5060");
 ```
 
 **4. Transaction Relay**

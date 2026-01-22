@@ -150,7 +150,6 @@ modparam("tm", "failure_reply_mode", 3)
 modparam("tm", "fr_timer", 30000)
 modparam("tm", "fr_inv_timer", 120000)
 
-modparam("rr", "enable_full_lr", 1)
 modparam("rr", "append_fromtag", 0)
 
 ####### Routing Logic ########
@@ -222,7 +221,7 @@ request_route {
         xlog("L_INFO", "Rewritten R-URI: $ru\n");
 
         # Record-Route to stay in signaling path
-        record_route();
+        record_route_preset("ELASTIC_IP_PLACEHOLDER:5060");
 
         # Route the call
         route(RELAY);
@@ -239,6 +238,11 @@ route[RELAY] {
     xlog("L_INFO", "===== RELAYING REQUEST =====\n");
     xlog("L_INFO", "Final R-URI: $ru\n");
 
+    # Remove all X-Twilio-* headers before forwarding
+    if (remove_hf_re("^X-Twilio-")) {
+        xlog("L_INFO", "Removed X-Twilio-* headers from outbound request\n");
+    }
+
     if (!t_relay()) {
         xlog("L_ERR", "Failed to relay request\n");
         sl_reply_error();
@@ -251,6 +255,11 @@ onreply_route {
     xlog("L_INFO", "===== RESPONSE RECEIVED =====\n");
     xlog("L_INFO", "Status: $rs $rr | From: $fu | To: $tu\n");
     xlog("L_INFO", "Source IP: $si:$sp\n");
+
+    # Remove all X-Twilio-* headers before forwarding response back to source
+    if (remove_hf_re("^X-Twilio-")) {
+        xlog("L_INFO", "Removed X-Twilio-* headers from response\n");
+    }
 }
 
 failure_route[FAIL_ROUTE] {

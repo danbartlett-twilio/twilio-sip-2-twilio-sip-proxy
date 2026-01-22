@@ -116,7 +116,7 @@ sudo tail -f /var/log/syslog | grep kamailio
 sudo tail -n 200 /var/log/cloud-init-output.log
 
 # Verify Kamailio configuration
-sudo cat /etc/kamailio/kamailio.cfg | grep -E "listen=|advertise|destination"
+sudo cat /etc/kamailio/kamailio.cfg | grep -E "listen=|advertise|destination|record_route_preset"
 
 # Test Kamailio config syntax
 sudo kamailio -c -f /etc/kamailio/kamailio.cfg
@@ -136,9 +136,17 @@ sudo tcpdump -i any port 5060 -n -vv -s0 -w /tmp/sip-capture.pcap
 
 ### Modifying Kamailio Configuration
 
-1. Edit `config/kamailio.cfg` or `scripts/user-data.sh` in the appropriate directory
-2. Run `terraform apply` - this triggers instance replacement with new config
-3. For load-balanced: instances are replaced via rolling update (50% healthy minimum)
+**CRITICAL**: The actual Kamailio configuration is embedded in `scripts/user-data.sh`, NOT in `config/kamailio.cfg`. The config/kamailio.cfg files are reference copies only.
+
+**To modify Kamailio routing logic, you MUST edit:**
+- `single-ec2/scripts/user-data.sh` (lines 93-275: embedded Kamailio config)
+- `load-balanced/scripts/user-data.sh` (lines 93-276: embedded Kamailio config)
+
+**Steps:**
+1. Edit the Kamailio config embedded in `scripts/user-data.sh` in the appropriate directory
+2. Optionally update `config/kamailio.cfg` reference files to keep them in sync
+3. Run `terraform apply` - this triggers instance replacement with new config
+4. For load-balanced: instances are replaced via rolling update (50% healthy minimum)
 
 ## Key Configuration Patterns
 
@@ -149,17 +157,70 @@ The core routing in `request_route` block:
 1. **IP-based filtering**: Only accept INVITEs from Twilio IP ranges (54.172.*, 54.244.*, 177.71.*)
 2. **Request-URI rewriting**: Extract user from incoming R-URI, rewrite domain to destination Twilio FQDN
 3. **Record-Route**: Add Record-Route header to stay in signaling path for in-dialog messages (ACK, BYE)
-4. **Transaction relay**: Use `t_relay()` from tm module for proper SIP transaction handling
+4. **X-Twilio-* Header Removal**: Strip all X-Twilio-* headers in both directions to isolate accounts
+5. **Transaction relay**: Use `t_relay()` from tm module for proper SIP transaction handling
 
 **Critical pattern:**
 ```kamailio
 if (is_method("INVITE") && ($si =~ "^54\.172\." || $si =~ "^54\.244\." || $si =~ "^177\.71\.")) {
     $var(user) = $rU;
     $ru = "sip:" + $var(user) + "@DESTINATION_DOMAIN";
-    record_route();
+    record_route_preset("ELASTIC_IP:5060");
     route(RELAY);
 }
 ```
+
+**Header Removal (in route[RELAY] and onreply_route):**
+```kamailio
+# Remove all X-Twilio-* headers before forwarding
+if (remove_hf_re("^X-Twilio-")) {
+    xlog("L_INFO", "Removed X-Twilio-* headers from outbound request\n");
+}
+```
+
+This removes X-Twilio-* headers in:
+- **Requests** (route[RELAY]): Before forwarding to destination Twilio
+- **Responses** (onreply_route): Before returning to source Twilio
+
+The `remove_hf_re()` function uses case-insensitive regex matching from the `textops` module.
+
+### Record-Route Configuration Pattern
+
+**CRITICAL**: Kamailio's `record_route()` function auto-detects IPs and does NOT use the `advertise` parameter. This causes issues in the load-balanced architecture where instances have only private IPs.
+
+**Problem in load-balanced architecture:**
+- Instance has private IP (10.0.x.x) in private subnet
+- `record_route()` adds: `Record-Route: <sip:10.0.x.x:5060;lr>`
+- ACKs from destination Twilio are sent to private IP (unreachable)
+- Call setup fails at ACK stage
+
+**Solution: Use record_route_preset() function**
+
+```kamailio
+# In request_route block, instead of record_route():
+record_route_preset("ELASTIC_IP:5060");
+```
+
+This forces Record-Route headers to use the public Elastic IP instead of auto-detecting the private IP.
+
+**Important notes:**
+- `record_route_preset` is a function, not a module parameter
+- Do NOT include `sip:` prefix - the function adds it automatically
+- Including `sip:` results in malformed `sip:sip:` headers
+
+**Why this works:**
+- Record-Route contains public Elastic IP (routable through NLB)
+- ACKs from destination Twilio route to NLB
+- NLB's source IP stickiness ensures ACK goes to correct instance
+- In-dialog messages (ACK, BYE) route properly
+
+**Applied to both architectures:**
+- **single-ec2**: More correct behavior (explicit public IP instead of relying on private IP being local)
+- **load-balanced**: REQUIRED for ACK routing to work (private IPs unreachable externally)
+
+**Implementation:**
+- `scripts/user-data.sh`: Uses `ELASTIC_IP_PLACEHOLDER` (replaced by sed during instance boot)
+- `config/kamailio.cfg`: Uses `ELASTIC_IP` (reference documentation only)
 
 ### User-Data Script Pattern
 
@@ -277,6 +338,30 @@ When users ask about monitoring or production readiness, recommend these CloudWa
 3. Kamailio config error (check logs)
 4. Instance private IP metadata retrieval failed during boot (check `/var/log/cloud-init-output.log`)
 
+### "Call setup fails after 200 OK" or "ACK not received"
+
+**Symptoms**: INVITE and responses (100, 180, 200 OK) succeed, but call doesn't establish. Destination Twilio shows "ACK not received."
+
+**Cause**: Record-Route header contains private IP (10.0.x.x) instead of public Elastic IP. ACKs from destination Twilio are sent to unreachable private IP.
+
+**Debug**:
+```bash
+# Capture SIP traffic and check Record-Route headers
+sudo tcpdump -i any port 5060 -n -vv -A | grep -A1 "Record-Route"
+
+# Verify record_route_preset is configured
+sudo grep "record_route_preset" /etc/kamailio/kamailio.cfg
+```
+
+**Fix**: Ensure `record_route_preset()` function is used instead of `record_route()`:
+```kamailio
+record_route_preset("ELASTIC_IP:5060");
+```
+Note: Do NOT include `sip:` prefix - the function adds it automatically.
+
+**Expected Record-Route**: `<sip:100.52.39.12:5060;lr>` (public Elastic IP)
+**Incorrect Record-Route**: `<sip:10.0.15.x:5060;lr>` (private IP)
+
 ### "403 Forbidden" from destination Twilio
 
 **Cause**: Proxy's outbound IP not whitelisted in destination Twilio account's IP ACL.
@@ -314,10 +399,18 @@ Where EXTENSION is the destination phone number or SIP username.
 
 ## File Structure Critical Points
 
-- **Both architectures** use the same Kamailio config logic (only difference is which Elastic IP is advertised)
+- **Both architectures** use the same Kamailio config logic (only difference is which Elastic IP is advertised and TCP listener in load-balanced)
 - **Terraform state files** are in `single-ec2/terraform/` and `load-balanced/terraform/` - keep them separate
-- **config/kamailio.cfg** is a template with PLACEHOLDER values, actual config is generated by user-data script
+- **CRITICAL**: The actual Kamailio config is embedded in `scripts/user-data.sh` (lines 93-275 for single-ec2, lines 93-276 for load-balanced)
+- **config/kamailio.cfg** files are reference copies only - NOT used by Terraform/instances
+- To modify Kamailio routing logic, you MUST edit `scripts/user-data.sh` in both directories
 - **README.md** contains comprehensive documentation including architecture diagrams, configuration guide, troubleshooting, and learnings/gotchas
+
+**Files to edit when changing Kamailio config:**
+1. `single-ec2/scripts/user-data.sh` (REQUIRED - actual config used)
+2. `load-balanced/scripts/user-data.sh` (REQUIRED - actual config used)
+3. `single-ec2/config/kamailio.cfg` (OPTIONAL - reference copy for documentation)
+4. `load-balanced/config/kamailio.cfg` (OPTIONAL - reference copy for documentation)
 
 ## Testing Changes
 
