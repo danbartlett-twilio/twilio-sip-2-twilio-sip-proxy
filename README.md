@@ -906,6 +906,9 @@ sudo tcpdump -i any port 5060 -n -vv -A
 
 # Save to file
 sudo tcpdump -i any port 5060 -n -s0 -w /tmp/sip-capture.pcap
+
+# Alternative Live Capture Tool
+sudo sngrep
 ```
 
 ### Load Balanced
