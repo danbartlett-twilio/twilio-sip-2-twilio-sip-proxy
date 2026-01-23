@@ -218,10 +218,13 @@ terraform apply
 ### 4. Configure Twilio
 
 **Destination Twilio Account:**
-1. Go to Elastic SIP Trunking → IP Access Control Lists
-2. Add proxy IP with `/32` CIDR:
+1. Go to Voice → Manage → SIP domains and select the domain you entered in terraform.tfvars 
+2. Click the "+" icon next to "IP ACCESS CONTROL LISTS"
+3. Add proxy IP with `/32` CIDR:
    - Single EC2: Use `elastic_ip` from Terraform output
    - Load Balanced: Use `nat_gateway_ip` from Terraform output (NOT the NLB IP!)
+4. Click "Create ACL"
+5. Click "Save" at the bottom of the page. 
 
 **Source Twilio Account:**
 1. Go to Phone Numbers → Select your number
