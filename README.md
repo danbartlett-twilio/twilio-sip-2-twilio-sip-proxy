@@ -224,8 +224,13 @@ terraform apply
    - Load Balanced: Use `nat_gateway_ip` from Terraform output (NOT the NLB IP!)
 
 **Source Twilio Account:**
+
+For quick testing, you can use the proxy IP address directly. **For production deployments, use a domain name instead** (see "Using a Domain Name for Production" below).
+
 1. Go to Phone Numbers → Select your number
 2. Under Voice & Fax, use TwiML:
+
+   **Option A: IP Address (Quick Start)**
    ```xml
    <Response>
      <Dial>
@@ -235,6 +240,56 @@ terraform apply
    ```
    - Single EC2: Use `elastic_ip` from output
    - Load Balanced: Use `nlb_elastic_ip` from output
+
+   **Option B: Domain Name (Production)**
+   ```xml
+   <Response>
+     <Dial>
+       <Sip>sip:EXTENSION@sip-proxy.yourcompany.com:5060</Sip>
+     </Dial>
+   </Response>
+   ```
+
+#### Using a Domain Name for Production
+
+While using the proxy IP address directly works, **using a domain name is strongly recommended for production** deployments.
+
+**Benefits:**
+- **Flexibility**: Change infrastructure (IP addresses, architectures) without updating TwiML
+- **Disaster recovery**: Update DNS to point to backup infrastructure
+- **Professional**: More readable and maintainable than IP addresses
+- **Future-proof**: Enables TLS/SIPS support and multi-environment setups (dev/staging/prod)
+
+**Basic Setup with Route53:**
+
+1. **Register or use existing domain** (e.g., yourcompany.com)
+
+2. **Create A record in Route53:**
+   ```bash
+   # Via AWS Console:
+   Route53 → Hosted Zones → Select your domain → Create Record
+
+   Record name: sip-proxy (creates sip-proxy.yourcompany.com)
+   Record type: A
+   Value: <PROXY_ELASTIC_IP>
+   TTL: 300 seconds (5 minutes)
+   ```
+
+3. **Get the correct IP:**
+   - Single EC2: Use `elastic_ip` from Terraform output
+   - Load Balanced: Use `nlb_elastic_ip` from Terraform output
+
+4. **Update your TwiML** to use the domain name instead of IP
+
+5. **Test DNS resolution:**
+   ```bash
+   dig sip-proxy.yourcompany.com
+   # Should return your proxy's Elastic IP
+   ```
+
+**Cost:** Route53 hosted zone costs ~$0.50/month + ~$0.40/month per million queries (negligible for SIP traffic).
+
+For more details on Route53 configuration, see [AWS Route53 Documentation](https://docs.aws.amazon.com/route53/).
 
 ### 5. Test
 
@@ -1351,24 +1406,31 @@ When EC2 has multiple IPs:
 
 ### Deployment Lessons
 
-**12. User-Data Script Execution**
+**12. Use Domain Names for Production**
+- IP addresses work for testing but domain names are better for production
+- DNS provides flexibility: change infrastructure without updating TwiML
+- Enables disaster recovery: point DNS to backup infrastructure
+- Set up A record in Route53 pointing to your Elastic IP
+- Use short TTL (300 seconds) for faster failover if needed
+
+**13. User-Data Script Execution**
 - EC2 user-data runs during first boot
 - Metadata service might not be immediately available → add retry logic
 - Kamailio auto-starts after `apt-get install` → must stop it, configure, then restart
 - Always validate config with `kamailio -c` before starting service
 
-**13. Terraform State Management**
+**14. Terraform State Management**
 - Keep single-ec2 and load-balanced Terraform states SEPARATE
 - Don't try to migrate from single-ec2 to load-balanced in-place
 - Deploy load-balanced fresh, test, then destroy single-ec2
 
-**14. Instance Refresh Gotchas**
+**15. Instance Refresh Gotchas**
 - Launch template changes don't always trigger automatic refresh
 - Terraform doesn't detect changes inside `templatefile()` content
 - Solution: Use `terraform apply -replace="aws_launch_template.x"` to force recreation
 - Or destroy and rebuild for guaranteed clean state
 
-**15. Testing Strategy**
+**16. Testing Strategy**
 - Always test in single-ec2 first (faster iteration, cheaper)
 - Use `tcpdump` to capture SIP packets and verify behavior
 - Check Kamailio logs for detailed routing decisions
@@ -1377,32 +1439,32 @@ When EC2 has multiple IPs:
 
 ### Cost Optimization Lessons
 
-**16. NAT Gateway Costs**
+**17. NAT Gateway Costs**
 - NAT Gateway adds ~$32/month base cost
 - Data processing adds ~$0.045/GB
 - Single NAT Gateway is sufficient (all instances in one AZ)
 - If cost is a concern, use single-ec2 architecture
 
-**17. Instance Sizing**
+**18. Instance Sizing**
 - SIP signaling is lightweight (no media processing)
 - t3.small (2 vCPU, 2 GB) handles 100+ concurrent calls
 - Can use t3.micro for very light traffic
 - Scale horizontally (more instances) rather than vertically (bigger instances)
 
-**18. Network Load Balancer Costs**
+**19. Network Load Balancer Costs**
 - $16/month base cost regardless of usage
 - $0.006/GB processed (minimal for SIP signaling)
 - Cross-zone load balancing has no additional cost
 
 ### Monitoring & Debugging Lessons
 
-**19. Logging Strategies**
+**20. Logging Strategies**
 - Kamailio logs to syslog by default
 - Set `debug=4` for detailed SIP message logging
 - Use `xlog()` statements in Kamailio config for custom logging
 - Check `/var/log/cloud-init-output.log` for user-data script execution
 
-**20. Common Error Patterns**
+**21. Common Error Patterns**
 - "Request timeout" = No response (security group or Kamailio not running)
 - "403 Forbidden" from Kamailio = Source IP not in allowed range
 - "403 Forbidden" from Twilio = Proxy IP not whitelisted in destination IP ACL
