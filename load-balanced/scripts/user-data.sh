@@ -56,7 +56,8 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
     tcpdump \
     net-tools \
     dnsutils \
-    curl
+    curl \
+    sngrep
 
 # Stop Kamailio immediately after install (it auto-starts)
 echo "Stopping Kamailio to configure it..."
