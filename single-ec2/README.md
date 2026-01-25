@@ -9,6 +9,10 @@ Source Twilio Account → Kamailio SIP Proxy → Destination Twilio Account
                          (AWS EC2 + Elastic IP)
 ```
 
+**Architecture Diagram:**
+
+![Single Instance Architecture](../images/Twilio-SIP-2-Twilio-SIP-Proxy-Single%20Instance.png)
+
 ## Features
 
 - **Stateless SIP proxying** - Kamailio handles Via headers and response routing correctly

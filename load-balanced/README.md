@@ -21,6 +21,10 @@ Production-ready, auto-scaling Kamailio SIP proxy for routing calls between Twil
   - Outbound via NAT Gateway
 ```
 
+**Architecture Diagram:**
+
+![Load-Balanced Architecture](../images/Twilio-SIP-2-Twilio-SIP-Proxy-Load-Balanced.png)
+
 **Two Elastic IPs:**
 - **NLB EIP**: For inbound traffic from source Twilio (configure in source TwiML)
 - **NAT Gateway EIP**: For outbound traffic to destination Twilio (whitelist in destination IP ACL)

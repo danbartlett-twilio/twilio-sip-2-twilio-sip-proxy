@@ -115,6 +115,10 @@ Perfect for proof-of-concept, testing, and low-volume production use.
     └──────────────────────┘
 ```
 
+**Architecture Diagram:**
+
+![Single Instance Architecture](images/Twilio-SIP-2-Twilio-SIP-Proxy-Single%20Instance.png)
+
 **Characteristics:**
 - 1 EC2 instance with 1 Elastic IP
 - Deployment time: 3-5 minutes
@@ -152,6 +156,10 @@ Production-grade deployment with high availability, auto-scaling, and zero-downt
   - Inbound via NLB
   - Outbound via NAT Gateway
 ```
+
+**Architecture Diagram:**
+
+![Load-Balanced Architecture](images/Twilio-SIP-2-Twilio-SIP-Proxy-Load-Balanced.png)
 
 **Two Elastic IPs:**
 - **NLB EIP**: Inbound traffic from source Twilio (configure in source TwiML)
